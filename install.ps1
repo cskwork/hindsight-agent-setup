@@ -77,12 +77,14 @@ if (-not $Model) {
 Say "Writing server config ($Model, reasoning=$Reasoning)"
 # Failover: every call tries the Codex model first, so the fallback only runs while it is
 # rate-limited and memory goes back to the Codex model as soon as its quota resets.
+# MAX_THINKING_TOKENS=0 turns off extended thinking in the claude CLI the fallback spawns.
 $FallbackEnv = ''
 if ($Fallback -ne 'none' -and (Has claude)) {
   $FallbackEnv = @"
 `$env:HINDSIGHT_API_LLM_STRATEGY = '{"mode":"failover"}'
 `$env:HINDSIGHT_API_LLM_1_PROVIDER = 'claude-code'
 `$env:HINDSIGHT_API_LLM_1_MODEL = '$Fallback'
+`$env:MAX_THINKING_TOKENS = '0'
 "@
   Write-Host "   fallback model: $Fallback (Claude login, only while $Model is rate-limited)"
 }

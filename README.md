@@ -51,7 +51,7 @@ Then start new agent sessions. Open the memory web UI at http://127.0.0.1:9999.
 | Web UI | `@vectorize-io/hindsight-control-plane` on `127.0.0.1:9999` |
 | Auto-start | At login, restarted if it stops: launchd (macOS), Scheduled Task (Windows), systemd `--user` (Linux) |
 | Memory model | Your ChatGPT plan via the `openai-codex` provider. Picks the cheapest available (newest `*-luna`, else `*-mini`), reasoning `low` |
-| Fallback model | If Claude Code is installed: `claude-haiku-4-5` through your Claude login, used only while the Codex model hits its usage limit. Every call tries the Codex model first, so memory switches back by itself once the limit resets |
+| Fallback model | If Claude Code is installed: `claude-haiku-4-5` through your Claude login, with thinking off, used only while the Codex model hits its usage limit. Every call tries the Codex model first, so memory switches back by itself once the limit resets |
 | Login | A separate Codex login in `~/.hindsight/codex-home`, so the server's token refresh never logs you out of your own Codex |
 | Claude Code, Codex | Official [`@vectorize-io/hindsight-coding-agents`](https://www.npmjs.com/package/@vectorize-io/hindsight-coding-agents) hooks + MCP server |
 | Hermes | Built-in Hindsight memory provider (`local_external` mode); skipped if Hermes is not installed |
@@ -69,7 +69,7 @@ Set as environment variables before running the installer (`HINDSIGHT_MODEL=gpt-
 |----------|---------|-------|
 | `HINDSIGHT_MODEL` | auto | Any `slug` in `~/.codex/models_cache.json` |
 | `HINDSIGHT_FALLBACK_MODEL` | `claude-haiku-4-5` | Claude model used while the Codex model is rate-limited. `none` = no fallback |
-| `HINDSIGHT_REASONING` | `low` | `low`, `medium`, `high`, `xhigh`. Higher = better memory consolidation, more plan usage |
+| `HINDSIGHT_REASONING` | `low` | `low`, `medium`, `high`, `xhigh`. `low` is the lowest the Codex models accept. Higher = better memory consolidation, more plan usage |
 | `HINDSIGHT_BANK` | `agents` | Shared memory bank name |
 | `HINDSIGHT_AGENTS` | `claude-code codex hermes` | Which agents to connect |
 | `HINDSIGHT_UI` | `1` | `0` = no web UI |
