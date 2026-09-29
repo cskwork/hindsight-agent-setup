@@ -77,11 +77,13 @@ EOF
 
 # Failover: every call tries the Codex model first, so the fallback only runs while it is
 # rate-limited and memory goes back to the Codex model as soon as its quota resets.
+# MAX_THINKING_TOKENS=0 turns off extended thinking in the claude CLI the fallback spawns.
 if [ "$FALLBACK" != none ] && has claude; then
   cat >> "$HOME_DIR/server.env" <<EOF
 HINDSIGHT_API_LLM_STRATEGY='{"mode":"failover"}'
 HINDSIGHT_API_LLM_1_PROVIDER=claude-code
 HINDSIGHT_API_LLM_1_MODEL=$FALLBACK
+MAX_THINKING_TOKENS=0
 EOF
   echo "   fallback model: $FALLBACK (Claude login, only while $MODEL is rate-limited)"
 fi
