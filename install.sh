@@ -5,6 +5,7 @@ set -euo pipefail
 
 MODEL="${HINDSIGHT_MODEL:-}"                    # empty = cheapest Codex model on your plan (luna > mini)
 REASONING="${HINDSIGHT_REASONING:-low}"         # low | medium | high | xhigh
+FALLBACK="${HINDSIGHT_FALLBACK_MODEL:-claude-haiku-4-5}"  # used via your Claude login while the Codex model is rate-limited; none = off
 BANK="${HINDSIGHT_BANK:-agents}"                # one bank shared by every agent
 PORT="${HINDSIGHT_PORT:-8888}"
 UI_PORT="${HINDSIGHT_UI_PORT:-9999}"
@@ -73,6 +74,17 @@ HINDSIGHT_API_LLM_MODEL=$MODEL
 HINDSIGHT_API_LLM_REASONING_EFFORT=$REASONING
 CODEX_HOME=$CODEX_HOME_DIR
 EOF
+
+# Failover: every call tries the Codex model first, so the fallback only runs while it is
+# rate-limited and memory goes back to the Codex model as soon as its quota resets.
+if [ "$FALLBACK" != none ] && has claude; then
+  cat >> "$HOME_DIR/server.env" <<EOF
+HINDSIGHT_API_LLM_STRATEGY='{"mode":"failover"}'
+HINDSIGHT_API_LLM_1_PROVIDER=claude-code
+HINDSIGHT_API_LLM_1_MODEL=$FALLBACK
+EOF
+  echo "   fallback model: $FALLBACK (Claude login, only while $MODEL is rate-limited)"
+fi
 
 cat > "$HOME_DIR/run-server.sh" <<EOF
 #!/usr/bin/env bash
@@ -215,5 +227,6 @@ done
 curl -sf -X DELETE "$API_URL/v1/default/banks/$CHECK_BANK" >/dev/null || true
 
 say "Done. Server: $API_URL  bank: $BANK  model: $MODEL ($REASONING)"
+grep -q LLM_1_MODEL "$HOME_DIR/server.env" && echo "   Fallback: $FALLBACK while $MODEL is rate-limited"
 [ "$UI" = 1 ] && echo "   Web UI: http://127.0.0.1:$UI_PORT"
 echo "   Start a NEW Claude Code / Codex session (and restart the Hermes gateway if it runs as a service)."
