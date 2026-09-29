@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 function Env-Or($name, $default) { $v = [Environment]::GetEnvironmentVariable($name); if ($v) { $v } else { $default } }
 $Model     = Env-Or 'HINDSIGHT_MODEL'     ''   # empty = cheapest Codex model on your plan (luna > mini)
 $Reasoning = Env-Or 'HINDSIGHT_REASONING' 'low'
+$Fallback  = Env-Or 'HINDSIGHT_FALLBACK_MODEL' 'claude-haiku-4-5'   # used via your Claude login while the Codex model is rate-limited; none = off
 $Bank      = Env-Or 'HINDSIGHT_BANK'      'agents'
 $Port      = Env-Or 'HINDSIGHT_PORT'      '8888'
 $UiPort    = Env-Or 'HINDSIGHT_UI_PORT'   '9999'
@@ -74,6 +75,17 @@ if (-not $Model) {
 
 # 4. Server + UI launchers ---------------------------------------------------
 Say "Writing server config ($Model, reasoning=$Reasoning)"
+# Failover: every call tries the Codex model first, so the fallback only runs while it is
+# rate-limited and memory goes back to the Codex model as soon as its quota resets.
+$FallbackEnv = ''
+if ($Fallback -ne 'none' -and (Has claude)) {
+  $FallbackEnv = @"
+`$env:HINDSIGHT_API_LLM_STRATEGY = '{"mode":"failover"}'
+`$env:HINDSIGHT_API_LLM_1_PROVIDER = 'claude-code'
+`$env:HINDSIGHT_API_LLM_1_MODEL = '$Fallback'
+"@
+  Write-Host "   fallback model: $Fallback (Claude login, only while $Model is rate-limited)"
+}
 Write-Utf8 (Join-Path $HomeDir 'run-server.ps1') @"
 `$env:HINDSIGHT_API_HOST = '127.0.0.1'
 `$env:HINDSIGHT_API_PORT = '$Port'
@@ -81,6 +93,7 @@ Write-Utf8 (Join-Path $HomeDir 'run-server.ps1') @"
 `$env:HINDSIGHT_API_LLM_MODEL = '$Model'
 `$env:HINDSIGHT_API_LLM_REASONING_EFFORT = '$Reasoning'
 `$env:CODEX_HOME = '$CodexHomeDir'
+$FallbackEnv
 `$env:PYTHONIOENCODING = 'utf-8'
 & '$ServerExe' *>> '$LogDir\server.log'
 "@
@@ -161,5 +174,6 @@ if (-not $recalled) { Fail "Recall did not return the stored fact. See $LogDir\s
 try { Invoke-RestMethod -Method Delete "$ApiUrl/v1/default/banks/$checkBank" | Out-Null } catch {}
 
 Say "Done. Server: $ApiUrl  bank: $Bank  model: $Model ($Reasoning)"
+if ($FallbackEnv) { Write-Host "   Fallback: $Fallback while $Model is rate-limited" }
 if ($Ui -eq '1') { Write-Host "   Web UI: http://127.0.0.1:$UiPort" }
 Write-Host '   Start a NEW Claude Code / Codex session (and restart Hermes if it runs as a service).'
