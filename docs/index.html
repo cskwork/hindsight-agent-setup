@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hindsight-agent-setup — Claude Code · Codex · Hermes shared memory</title>
+<meta name="description" content="One shared long-term memory for Claude Code, Codex and Hermes. No Docker, no API key.">
+<style>
+  :root {
+    --bg1: #0b1020; --bg2: #1a1240; --bg3: #0d2a3a;
+    --card: rgba(255,255,255,.07); --card-solid: rgba(15,20,40,.55);
+    --line: rgba(255,255,255,.14); --text: #eef1ff; --muted: #b7bfdc;
+    --accent: #8ab4ff; --accent2: #c79bff; --ok: #7ee2b8;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--text); line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: radial-gradient(1200px 700px at 10% -10%, #3b2a8a 0%, transparent 60%),
+                radial-gradient(900px 600px at 110% 10%, #0e5a7a 0%, transparent 55%),
+                linear-gradient(160deg, var(--bg1), var(--bg2) 55%, var(--bg3));
+    background-attachment: fixed; min-height: 100vh;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; }
+  .brand { font-weight: 700; letter-spacing: .2px; }
+  .brand span { color: var(--accent); }
+  .navr { display: flex; gap: 12px; align-items: center; }
+  .lang { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card-solid); }
+  .lang button { background: none; border: 0; color: var(--muted); padding: 6px 12px; cursor: pointer; font-weight: 600; }
+  .lang button.on { background: rgba(138,180,255,.25); color: var(--text); }
+  .gh { text-decoration: none; color: var(--text); border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; background: var(--card-solid); }
+  .glass {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  }
+  header.hero { padding: 56px 0 28px; text-align: center; }
+  .pill { display: inline-block; font-size: 13px; color: var(--ok); border: 1px solid rgba(126,226,184,.35); padding: 4px 12px; border-radius: 999px; background: rgba(126,226,184,.08); }
+  h1 { font-size: clamp(30px, 5vw, 52px); line-height: 1.15; margin: 18px 0 14px; }
+  h1 .grad { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { color: var(--muted); font-size: 18px; max-width: 720px; margin: 0 auto 28px; }
+  .prompt { max-width: 760px; margin: 0 auto; padding: 18px; text-align: left; }
+  .prompt .label { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .code { position: relative; font-family: var(--mono); font-size: 14px; background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 12px; padding: 14px 84px 14px 14px; white-space: pre-wrap; word-break: break-all; }
+  .copy { position: absolute; top: 8px; right: 8px; background: rgba(138,180,255,.2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
+  .copy.done { background: rgba(126,226,184,.3); }
+  section { padding: 34px 0; }
+  h2 { font-size: 26px; margin: 0 0 18px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .card { padding: 20px; }
+  .card h3 { margin: 6px 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .icon { font-size: 24px; }
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; padding: 24px; }
+  .agents { display: grid; gap: 10px; }
+  .agent { padding: 10px 14px; border-radius: 12px; background: var(--card-solid); border: 1px solid var(--line); font-weight: 600; }
+  .arrow { font-size: 28px; color: var(--accent); text-align: center; }
+  .server { padding: 18px; border-radius: 14px; background: linear-gradient(135deg, rgba(138,180,255,.18), rgba(199,155,255,.18)); border: 1px solid var(--line); }
+  .server b { display: block; font-size: 18px; margin-bottom: 4px; }
+  .server small { color: var(--muted); }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { background: var(--card-solid); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
+  .tabs button.on { color: var(--text); background: rgba(138,180,255,.25); }
+  .pane { display: none; padding: 20px; }
+  .pane.on { display: block; }
+  .pane p { color: var(--muted); margin: 0 0 10px; }
+  .pane .code { margin-bottom: 12px; }
+  ol.steps { margin: 0; padding-left: 20px; color: var(--muted); }
+  ol.steps li { margin: 6px 0; }
+  ol.steps b { color: var(--text); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+  td:last-child { color: var(--muted); }
+  code { font-family: var(--mono); font-size: .92em; background: rgba(0,0,0,.35); padding: 1px 6px; border-radius: 6px; }
+  footer { padding: 36px 0 50px; color: var(--muted); font-size: 14px; text-align: center; }
+  @media (max-width: 720px) { .flow { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">hindsight<span>·</span>agent-setup</div>
+    <div class="navr">
+      <div class="lang" role="group" aria-label="Language">
+        <button data-lang="ko">KO</button><button data-lang="en">EN</button>
+      </div>
+      <a class="gh" href="https://github.com/cskwork/hindsight-agent-setup">GitHub</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="pill" data-i18n="pill"></span>
+    <h1><span data-i18n="h1a"></span><br><span class="grad" data-i18n="h1b"></span></h1>
+    <p class="lead" data-i18n="lead"></p>
+    <div class="prompt glass">
+      <div class="label" data-i18n="promptLabel"></div>
+      <div class="code" id="agentPrompt">Set up shared memory for my coding agents: https://github.com/cskwork/hindsight-agent-setup<button class="copy" data-copy="agentPrompt" data-i18n="copy"></button></div>
+    </div>
+  </header>
+
+  <section>
+    <h2 data-i18n="howTitle"></h2>
+    <div class="flow glass">
+      <div class="agents">
+        <div class="agent">Claude Code</div>
+        <div class="agent">Codex</div>
+        <div class="agent">Hermes</div>
+      </div>
+      <div class="arrow">⇄</div>
+      <div class="server">
+        <b>Hindsight</b>
+        <small data-i18n="serverDesc"></small>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="featTitle"></h2>
+    <div class="grid">
+      <div class="card glass"><div class="icon">🧠</div><h3 data-i18n="f1t"></h3><p data-i18n="f1d"></p></div>
+      <div class="card glass"><div class="icon">🐳</div><h3 data-i18n="f2t"></h3><p data-i18n="f2d"></p></div>
+      <div class="card glass"><div class="icon">💳</div><h3 data-i18n="f3t"></h3><p data-i18n="f3d"></p></div>
+      <div class="card glass"><div class="icon">🔁</div><h3 data-i18n="f4t"></h3><p data-i18n="f4d"></p></div>
+      <div class="card glass"><div class="icon">🖥️</div><h3 data-i18n="f5t"></h3><p data-i18n="f5d"></p></div>
+      <div class="card glass"><div class="icon">🛟</div><h3 data-i18n="f6t"></h3><p data-i18n="f6d"></p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2 data-i18n="installTitle"></h2>
+    <div class="tabs">
+      <button data-tab="agent" class="on" data-i18n="tabAgent"></button>
+      <button data-tab="mac">macOS / Linux</button>
+      <button data-tab="win" data-i18n="tabWin"></button>
+    </div>
+    <div class="pane glass on" id="pane-agent">
+      <ol class="steps">
+        <li data-i18n="s1"></li>
+        <li data-i18n="s2"></li>
+        <li data-i18n="s3"></li>
+        <li data-i18n="s4"></li>
+      </ol>
+    </div>
+    <div class="pane glass" id="pane-mac">
+      <p data-i18n="req"></p>
+      <p data-i18n="step1"></p>
+      <div class="code" id="macLogin">CODEX_HOME=~/.hindsight/codex-home codex login<button class="copy" data-copy="macLogin" data-i18n="copy"></button></div>
+      <p data-i18n="step2"></p>
+      <div class="code" id="macInstall">curl -fsSL https://raw.githubusercontent.com/cskwork/hindsight-agent-setup/main/bootstrap.sh | bash<button class="copy" data-copy="macInstall" data-i18n="copy"></button></div>
+    </div>
+    <div class="pane glass" id="pane-win">
+      <p data-i18n="req"></p>
+      <p data-i18n="step1"></p>
+      <div class="code" id="winLogin">$env:CODEX_HOME="$HOME\.hindsight\codex-home"; codex login; Remove-Item Env:CODEX_HOME<button class="copy" data-copy="winLogin" data-i18n="copy"></button></div>
+      <p data-i18n="step2"></p>
+      <div class="code" id="winInstall">irm https://raw.githubusercontent.com/cskwork/hindsight-agent-setup/main/bootstrap.ps1 | iex<button class="copy" data-copy="winInstall" data-i18n="copy"></button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="faqTitle"></h2>
+    <div class="glass" style="padding:8px 8px">
+      <table>
+        <tr><td data-i18n="q1"></td><td data-i18n="a1"></td></tr>
+        <tr><td data-i18n="q2"></td><td data-i18n="a2"></td></tr>
+        <tr><td data-i18n="q3"></td><td data-i18n="a3"></td></tr>
+        <tr><td data-i18n="q4"></td><td data-i18n="a4"></td></tr>
+        <tr><td data-i18n="q5"></td><td data-i18n="a5"></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer data-i18n="footer"></footer>
+</div>
+
+<script>
+const I18N = {
+  ko: {
+    pill: "Claude Code · Codex · Hermes",
+    h1a: "에이전트들이 같은 기억을",
+    h1b: "함께 씁니다",
+    lead: "Hindsight 장기 기억을 한 번에 설치합니다. Docker도 API 키도 필요 없고, 기억 정리는 쓰고 계신 ChatGPT 구독으로 처리합니다.",
+    promptLabel: "에이전트에게 이 한 줄만 붙여 넣으세요",
+    copy: "복사",
+    howTitle: "어떻게 동작하나요",
+    serverDesc: "내 컴퓨터에서 도는 기억 서버. 대화를 사실·개체 단위로 정리해 저장하고, 어느 에이전트에서든 다시 꺼내 씁니다.",
+    featTitle: "특징",
+    f1t: "하나의 공유 기억", f1d: "Codex에서 알려 준 내용을 Claude Code와 Hermes가 기억합니다.",
+    f2t: "Docker 없음", f2d: "uv로 서버를 직접 설치하고 내장 데이터베이스를 씁니다.",
+    f3t: "API 키 없음", f3d: "ChatGPT 구독의 Codex 모델로 기억을 정리합니다. 요금제에서 가장 저렴한 모델을 자동으로 고릅니다.",
+    f4t: "자동 실행", f4d: "로그인하면 서버와 관리 화면이 켜지고, 멈추면 다시 켜집니다.",
+    f5t: "Mac · Windows", f5d: "macOS와 Linux, Windows(베타)에서 같은 방식으로 설치됩니다.",
+    f6t: "안전한 설치", f6d: "바꾸기 전에 설정을 백업하고, 설치 끝에 실제로 저장·검색이 되는지 확인합니다.",
+    installTitle: "설치",
+    tabAgent: "에이전트에게 맡기기",
+    tabWin: "Windows (베타)",
+    s1: "<b>Claude Code, Codex, Hermes</b> 중 하나에 위의 한 줄을 붙여 넣습니다.",
+    s2: "에이전트가 컴퓨터를 확인하고, 무엇이 바뀌는지 설명한 뒤 허락을 받습니다.",
+    s3: "브라우저에서 <b>ChatGPT 로그인</b>을 한 번 합니다. 기억 서버 전용 로그인이라 평소 Codex 로그인에는 영향이 없습니다.",
+    s4: "에이전트가 설치하고 에이전트 간 기억 공유까지 확인합니다. 끝나면 에이전트를 새로 시작하세요.",
+    req: "필요한 것: uv, Node.js 18 이상, Codex CLI, Codex가 포함된 ChatGPT 요금제",
+    step1: "1. 기억 서버 전용 ChatGPT 로그인 (한 번만)",
+    step2: "2. 설치",
+    faqTitle: "자주 묻는 질문",
+    q1: "비용이 드나요?", a1: "추가 요금은 없습니다. 기억 정리가 ChatGPT 구독 사용량을 조금 씁니다.",
+    q2: "데이터는 어디에?", a2: "기억은 내 컴퓨터(~/.pg0)에 저장됩니다. 대화 내용은 기억으로 정리하기 위해 ChatGPT(OpenAI)로 전송됩니다.",
+    q3: "기억은 어디서 보나요?", a3: "http://127.0.0.1:9999 관리 화면에서 보고, 찾고, 지울 수 있습니다.",
+    q4: "기억 저장이 멈췄어요", a4: "서버 전용 로그인이 만료된 경우입니다. 설치 1단계 로그인 명령을 다시 실행하세요.",
+    q5: "제거하려면?", a5: "~/.hindsight/setup/uninstall.sh (Windows는 uninstall.ps1). 기억 데이터는 남겨 둡니다.",
+    footer: "비공식 커뮤니티 설치 도구입니다. Hindsight는 Vectorize가 만들었습니다. · MIT License"
+  },
+  en: {
+    pill: "Claude Code · Codex · Hermes",
+    h1a: "Your agents share",
+    h1b: "one memory",
+    lead: "Install Hindsight long-term memory in one go. No Docker, no API key — memory is processed with the ChatGPT plan you already have.",
+    promptLabel: "Paste this one line into your agent",
+    copy: "Copy",
+    howTitle: "How it works",
+    serverDesc: "A memory server on your own machine. It turns conversations into facts and entities, and any agent can recall them.",
+    featTitle: "Features",
+    f1t: "One shared memory", f1d: "Tell Codex something, and Claude Code and Hermes remember it.",
+    f2t: "No Docker", f2d: "The server is installed with uv and uses an embedded database.",
+    f3t: "No API key", f3d: "Memories are processed by Codex models on your ChatGPT plan. The cheapest model on your plan is picked automatically.",
+    f4t: "Starts itself", f4d: "Server and web UI start at login and restart if they stop.",
+    f5t: "Mac · Windows", f5d: "Same setup on macOS, Linux and Windows (beta).",
+    f6t: "Safe install", f6d: "Configs are backed up first, and the install ends with a real store + recall test.",
+    installTitle: "Install",
+    tabAgent: "Let your agent do it",
+    tabWin: "Windows (beta)",
+    s1: "Paste the line above into <b>Claude Code, Codex or Hermes</b>.",
+    s2: "The agent checks your machine, explains what will change, and asks first.",
+    s3: "Log in to <b>ChatGPT</b> once in the browser. It is a separate login for the memory server, so your own Codex stays logged in.",
+    s4: "The agent installs and verifies memory is shared between agents. Then start new agent sessions.",
+    req: "You need: uv, Node.js 18+, Codex CLI, a ChatGPT plan that includes Codex",
+    step1: "1. ChatGPT login for the memory server (one time)",
+    step2: "2. Install",
+    faqTitle: "FAQ",
+    q1: "Does it cost anything?", a1: "No extra charge. Memory processing uses a little of your ChatGPT plan's usage.",
+    q2: "Where is my data?", a2: "Memories are stored on your machine (~/.pg0). Conversations are sent to ChatGPT (OpenAI) to be turned into memories.",
+    q3: "Where do I see memories?", a3: "The web UI at http://127.0.0.1:9999 — browse, search and delete.",
+    q4: "Memory stopped saving", a4: "The server's login expired. Run the login command from install step 1 again.",
+    q5: "How do I uninstall?", a5: "~/.hindsight/setup/uninstall.sh (uninstall.ps1 on Windows). Memory data is kept.",
+    footer: "Unofficial community installer. Hindsight is made by Vectorize. · MIT License"
+  }
+};
+function setLang(lang) {
+  const d = I18N[lang] || I18N.ko;
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const v = d[el.dataset.i18n];
+    if (v === undefined) { console.warn("missing i18n key", lang, el.dataset.i18n); return; }
+    el.innerHTML = v;
+  });
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.lang === lang));
+  localStorage.setItem("lang", lang);
+}
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => setLang(b.dataset.lang));
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === "pane-" + b.dataset.tab));
+});
+document.addEventListener("click", e => {
+  const btn = e.target.closest(".copy"); if (!btn) return;
+  const box = document.getElementById(btn.dataset.copy);
+  const text = [...box.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add("done"); setTimeout(() => btn.classList.remove("done"), 1200);
+  });
+});
+setLang(localStorage.getItem("lang") || "ko");
+</script>
+</body>
+</html>
