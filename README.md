@@ -1,10 +1,10 @@
 # hindsight-agent-setup
 
-**One shared long-term memory for Claude Code, Codex and Hermes** — powered by
+**One shared long-term memory for Claude Code, Codex, Hermes and Pi** — powered by
 [Hindsight](https://github.com/vectorize-io/hindsight). No Docker, no API key: memory is processed
 with your ChatGPT plan through Codex. macOS and Windows (beta), Linux too.
 
-Claude Code·Codex·Hermes가 하나의 장기 기억을 함께 쓰게 해 줍니다. Docker와 API 키 없이 ChatGPT 구독만 사용합니다.
+Claude Code·Codex·Hermes·Pi가 하나의 장기 기억을 함께 쓰게 해 줍니다. Docker와 API 키 없이 ChatGPT 구독만 사용합니다.
 
 🌐 Landing page: https://cskwork.github.io/hindsight-agent-setup/
 
@@ -13,7 +13,7 @@ Claude Code·Codex·Hermes가 하나의 장기 기억을 함께 쓰게 해 줍�
 
 ## Quick start: let your agent do it
 
-Paste this into Claude Code, Codex or Hermes:
+Paste this into Claude Code, Codex, Hermes or Pi:
 
 ```text
 Set up shared memory for my coding agents: https://github.com/cskwork/hindsight-agent-setup
@@ -55,6 +55,7 @@ Then start new agent sessions. Open the memory web UI at http://127.0.0.1:9999.
 | Login | A separate Codex login in `~/.hindsight/codex-home`, so the server's token refresh never logs you out of your own Codex |
 | Claude Code, Codex | Official [`@vectorize-io/hindsight-coding-agents`](https://www.npmjs.com/package/@vectorize-io/hindsight-coding-agents) hooks + MCP server |
 | Hermes | Built-in Hindsight memory provider (`local_external` mode); skipped if Hermes is not installed |
+| Pi | [`pi-hindsight-memory`](https://github.com/cskwork/pi-hindsight-memory) Pi package, which loads the official adapter (`dist/pi.js`): recall before each turn, save after it, `hindsight_*` tools. Skipped if `pi` is not on PATH |
 | Memory bank | Every agent shares one bank, `agents` |
 
 Your conversations are sent to OpenAI (through your ChatGPT plan) to be turned into memories,
@@ -71,7 +72,8 @@ Set as environment variables before running the installer (`HINDSIGHT_MODEL=gpt-
 | `HINDSIGHT_FALLBACK_MODEL` | `claude-haiku-4-5` | Claude model used while the Codex model is rate-limited. `none` = no fallback |
 | `HINDSIGHT_REASONING` | `low` | `low`, `medium`, `high`, `xhigh`. `low` is the lowest the Codex models accept. Higher = better memory consolidation, more plan usage |
 | `HINDSIGHT_BANK` | `agents` | Shared memory bank name |
-| `HINDSIGHT_AGENTS` | `claude-code codex hermes` | Which agents to connect |
+| `HINDSIGHT_AGENTS` | `claude-code codex hermes pi` | Which agents to connect |
+| `HINDSIGHT_PI_PACKAGE` | `git:github.com/cskwork/pi-hindsight-memory` | Pi package source; `npm:pi-hindsight-memory` also works |
 | `HINDSIGHT_UI` | `1` | `0` = no web UI |
 | `HINDSIGHT_PORT` / `HINDSIGHT_UI_PORT` | `8888` / `9999` | |
 

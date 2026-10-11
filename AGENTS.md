@@ -10,9 +10,10 @@ Follow these steps. Speak to the user in their language, in plain words.
    The user also needs a ChatGPT plan that includes Codex; the memory server uses it instead of an API key.
 3. **Look before changing anything.** Check which memory tools are already connected to the user's
    agents (Claude Code `~/.claude/settings.json` hooks and `claude mcp list`, Codex `~/.codex/config.toml`
-   and `~/.codex/hooks.json`, Hermes `~/.hermes/config.yaml` `memory.provider`). Tell the user:
+   and `~/.codex/hooks.json`, Hermes `~/.hermes/config.yaml` `memory.provider`, Pi `pi list`). Tell the user:
    - an auto-start service will run the memory server (port 8888) and web UI (port 9999) at login,
    - Claude Code and Codex get Hindsight hooks + an MCP server, Hermes gets Hindsight as memory provider,
+     Pi gets the `pi-hindsight-memory` package (Hindsight's official Pi adapter),
    - agent configs are backed up first, other memory tools are left in place unless they ask otherwise.
    Ask for confirmation and wait.
 4. **ChatGPT login for the server (one time).** The server keeps its own login in `~/.hindsight/codex-home`
