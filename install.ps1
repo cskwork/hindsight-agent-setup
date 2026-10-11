@@ -1,4 +1,4 @@
-# Hindsight shared memory for Claude Code, Codex and Hermes on Windows — no Docker.
+# Hindsight shared memory for Claude Code, Codex, Hermes and Pi on Windows — no Docker.
 # Idempotent: safe to re-run. Auto-start uses per-user Scheduled Tasks (at logon).
 # Usage:  powershell -ExecutionPolicy Bypass -File .\install.ps1
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,8 @@ $Bank      = Env-Or 'HINDSIGHT_BANK'      'agents'
 $Port      = Env-Or 'HINDSIGHT_PORT'      '8888'
 $UiPort    = Env-Or 'HINDSIGHT_UI_PORT'   '9999'
 $Ui        = Env-Or 'HINDSIGHT_UI'        '1'
-$Agents    = (Env-Or 'HINDSIGHT_AGENTS'   'claude-code codex hermes') -split '\s+'
+$Agents    = (Env-Or 'HINDSIGHT_AGENTS'   'claude-code codex hermes pi') -split '\s+'
+$PiPackage = Env-Or 'HINDSIGHT_PI_PACKAGE' 'git:github.com/cskwork/pi-hindsight-memory'   # loads Hindsight's official Pi adapter
 
 $HomeDir      = Join-Path $HOME '.hindsight'
 $CodexHomeDir = Join-Path $HomeDir 'codex-home'   # separate ChatGPT login so token refreshes never log out your own Codex
@@ -143,6 +144,24 @@ if ($coding.Count -gt 0) {
   Backup (Join-Path $HOME '.claude\settings.json'); Backup (Join-Path $HOME '.codex\config.toml'); Backup (Join-Path $HOME '.codex\hooks.json')
   npx -y @vectorize-io/hindsight-coding-agents install @coding --server self-hosted --api-url $ApiUrl
   if ($LASTEXITCODE -ne 0) { Fail 'hindsight-coding-agents install failed' }
+}
+
+# Pi loads the adapter through a Pi package rather than an absolute path in its
+# settings.json, so a settings file kept in git stays portable across machines.
+$pi = ($Agents -contains 'pi') -and (Has pi)
+if ($pi) {
+  Say 'Connecting: pi'
+  # Stage the runtime (dist\pi.js) when no Claude Code / Codex install above did.
+  if (-not (Test-Path (Join-Path $HomeDir 'coding-agents\dist\pi.js'))) {
+    npx -y @vectorize-io/hindsight-coding-agents update
+    if ($LASTEXITCODE -ne 0) { Fail 'hindsight-coding-agents update failed' }
+  }
+  pi install $PiPackage | Out-Null
+  if ($LASTEXITCODE -ne 0) { Fail "pi install $PiPackage failed" }
+  Write-Host "   $PiPackage installed"
+}
+
+if ($coding.Count -gt 0 -or $pi) {
   Write-Utf8 (Join-Path $HomeDir 'coding-agent.json') (@{ serverMode = 'self-hosted'; apiUrl = $ApiUrl; bankId = $Bank } | ConvertTo-Json)
 }
 
@@ -178,4 +197,4 @@ try { Invoke-RestMethod -Method Delete "$ApiUrl/v1/default/banks/$checkBank" | O
 Say "Done. Server: $ApiUrl  bank: $Bank  model: $Model ($Reasoning)"
 if ($FallbackEnv) { Write-Host "   Fallback: $Fallback while $Model is rate-limited" }
 if ($Ui -eq '1') { Write-Host "   Web UI: http://127.0.0.1:$UiPort" }
-Write-Host '   Start a NEW Claude Code / Codex session (and restart Hermes if it runs as a service).'
+Write-Host '   Start a NEW Claude Code / Codex / Pi session (and restart Hermes if it runs as a service).'

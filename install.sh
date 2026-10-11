@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hindsight shared memory for Claude Code, Codex and Hermes — no Docker.
+# Hindsight shared memory for Claude Code, Codex, Hermes and Pi — no Docker.
 # Idempotent: safe to re-run. macOS (launchd) and Linux (systemd --user).
 set -euo pipefail
 
@@ -10,7 +10,8 @@ BANK="${HINDSIGHT_BANK:-agents}"                # one bank shared by every agent
 PORT="${HINDSIGHT_PORT:-8888}"
 UI_PORT="${HINDSIGHT_UI_PORT:-9999}"
 UI="${HINDSIGHT_UI:-1}"                          # 1 = also run the web UI at login
-AGENTS="${HINDSIGHT_AGENTS:-claude-code codex hermes}"
+AGENTS="${HINDSIGHT_AGENTS:-claude-code codex hermes pi}"
+PI_PACKAGE="${HINDSIGHT_PI_PACKAGE:-git:github.com/cskwork/pi-hindsight-memory}"  # loads Hindsight's official Pi adapter
 
 HOME_DIR="$HOME/.hindsight"
 CODEX_HOME_DIR="$HOME_DIR/codex-home"            # separate ChatGPT login so token refreshes never log out your own Codex
@@ -181,6 +182,21 @@ if [ -n "$CODING" ]; then
   backup "$HOME/.claude/settings.json"; backup "$HOME/.codex/config.toml"; backup "$HOME/.codex/hooks.json"
   # shellcheck disable=SC2086
   npx -y @vectorize-io/hindsight-coding-agents install $CODING --server self-hosted --api-url "$API_URL"
+fi
+
+# Pi loads the adapter through a Pi package rather than an absolute path in its
+# settings.json, so a settings file kept in git stays portable across machines.
+PI=0
+case " $AGENTS " in *" pi "*) has pi && PI=1 ;; esac
+if [ "$PI" = 1 ]; then
+  say "Connecting: pi"
+  # Stage the runtime (dist/pi.js) when no Claude Code / Codex install above did.
+  [ -f "$HOME_DIR/coding-agents/dist/pi.js" ] || npx -y @vectorize-io/hindsight-coding-agents update
+  pi install "$PI_PACKAGE" </dev/null >/dev/null || fail "pi install $PI_PACKAGE failed"
+  echo "   $PI_PACKAGE installed"
+fi
+
+if [ -n "$CODING" ] || [ "$PI" = 1 ]; then
   cat > "$HOME_DIR/coding-agent.json" <<EOF
 {
   "serverMode": "self-hosted",
@@ -231,4 +247,4 @@ curl -sf -X DELETE "$API_URL/v1/default/banks/$CHECK_BANK" >/dev/null || true
 say "Done. Server: $API_URL  bank: $BANK  model: $MODEL ($REASONING)"
 grep -q LLM_1_MODEL "$HOME_DIR/server.env" && echo "   Fallback: $FALLBACK while $MODEL is rate-limited"
 [ "$UI" = 1 ] && echo "   Web UI: http://127.0.0.1:$UI_PORT"
-echo "   Start a NEW Claude Code / Codex session (and restart the Hermes gateway if it runs as a service)."
+echo "   Start a NEW Claude Code / Codex / Pi session (and restart the Hermes gateway if it runs as a service)."
